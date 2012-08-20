@@ -3,12 +3,14 @@
 #
 
 inherit package
+inherit external_package
 
 IMAGE_PKGTYPE ?= "deb"
 
 DPKG_ARCH ?= "${TARGET_ARCH}" 
 
 PKGWRITEDIRDEB = "${WORKDIR}/deploy-debs"
+EXTERNAL_DIR_DEB = "${DEPLOY_DIR_DEB}/external"
 
 python package_deb_fn () {
     d.setVar('PKGFN', d.getVar('PKG'))
@@ -72,19 +74,25 @@ package_update_index_deb () {
 		return
 	fi
 
-	for arch in ${PACKAGE_ARCHS} ${SDK_PACKAGE_ARCHS}; do
-		if [ -e ${DEPLOY_DIR_DEB}/$arch ]; then
+	all_archs="${PACKAGE_ARCHS} ${SDK_PACKAGE_ARCHS}"
+
+	[ ! -d ${EXTERNAL_INSTALL_DIRS} ] || add_external_deb ${EXTERNAL_DIR_DEB} $all_archs
+
+	for arch in $all_archs; do
+		if [ -e ${DEPLOY_DIR_DEB}/$arch -o -e ${EXTERNAL_DIR_DEB}/$arch ]; then
 			debarchs="$debarchs $arch"
 		fi
 	done
 
 	for arch in $debarchs; do
-		if [ ! -d ${DEPLOY_DIR_DEB}/$arch ]; then
-			continue;
-		fi
-		cd ${DEPLOY_DIR_DEB}/$arch
-		dpkg-scanpackages . | gzip > Packages.gz
-		echo "Label: $arch" > Release
+		for d in ${DEPLOY_DIR_DEB} ${EXTERNAL_DIR_DEB}; do
+			if [ ! -d $d/$arch ]; then
+				continue;
+			fi
+			cd $d/$arch
+			dpkg-scanpackages . | gzip > Packages.gz
+			echo "Label: $arch" > Release
+		done
 	done
 }
 
@@ -114,16 +122,18 @@ package_install_internal_deb () {
 
 	priority=1
 	for arch in $archs; do
-		if [ ! -d ${DEPLOY_DIR_DEB}/$arch ]; then
-			continue;
-		fi
+		for d in ${DEPLOY_DIR_DEB} ${EXTERNAL_DIR_DEB}; do
+			if [ ! -d $d/$arch ]; then
+				continue;
+			fi
 
-		echo "deb file:${DEPLOY_DIR_DEB}/$arch/ ./" >> ${STAGING_ETCDIR_NATIVE}/apt/sources.list.rev
-		(echo "Package: *"
-		echo "Pin: release l=$arch"
-		echo "Pin-Priority: $(expr 800 + $priority)"
-		echo) >> ${STAGING_ETCDIR_NATIVE}/apt/preferences
-		priority=$(expr $priority + 5)
+			echo "deb file:$d/$arch/ ./" >> ${STAGING_ETCDIR_NATIVE}/apt/sources.list.rev
+			(echo "Package: *"
+			echo "Pin: release l=$arch"
+			echo "Pin-Priority: $(expr 800 + $priority)"
+			echo) >> ${STAGING_ETCDIR_NATIVE}/apt/preferences
+			priority=$(expr $priority + 5)
+		done
 	done
 
 	tac ${STAGING_ETCDIR_NATIVE}/apt/sources.list.rev > ${STAGING_ETCDIR_NATIVE}/apt/sources.list

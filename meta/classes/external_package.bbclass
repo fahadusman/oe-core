@@ -85,3 +85,7 @@ add_external_debipk () {
 add_external_ipk () {
 	add_external_debipk $@
 }
+
+add_external_deb () {
+	add_external_debipk $@
+}
