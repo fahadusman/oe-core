@@ -1,4 +1,5 @@
 inherit package
+inherit external_package
 
 IMAGE_PKGTYPE ?= "rpm"
 
@@ -7,6 +8,7 @@ RPMBUILD="rpmbuild"
 
 PKGWRITEDIRRPM = "${WORKDIR}/deploy-rpms"
 PKGWRITEDIRSRPM = "${DEPLOY_DIR}/sources/deploy-srpm"
+EXTERNAL_DIR_RPM = "${DEPLOY_DIR_RPM}/external"
 
 python package_rpm_fn () {
     d.setVar('PKGFN', d.getVar('PKG'))
@@ -26,6 +28,9 @@ package_update_index_rpm () {
 		return
 	fi
 
+	# Add external binary pkgs
+	add_external_rpm ${PACKAGE_ARCHS} ${MULTILIB_PACKAGE_ARCHS} ${SDK_PACKAGE_ARCHS}
+
 	# Update target packages
 	base_archs="${PACKAGE_ARCHS}"
 	ml_archs="${MULTILIB_PACKAGE_ARCHS}"
@@ -44,9 +49,11 @@ package_update_index_rpm_common () {
 	for archvar in "$@"; do
 		eval archs=\${${archvar}}
 		packagedirs=""
-		for arch in $archs; do
-			packagedirs="${DEPLOY_DIR_RPM}/$arch $packagedirs"
-			rm -rf ${DEPLOY_DIR_RPM}/$arch/solvedb.done
+		for d in ${DEPLOY_DIR_RPM} ${EXTERNAL_DIR_RPM}; do
+			for arch in $archs; do
+				packagedirs="$d/$arch $packagedirs"
+				rm -rf $d/$arch/solvedb.done
+			done
 		done
 
 		cat /dev/null > ${rpmconf_base}-${archvar}.conf
