@@ -7,7 +7,7 @@ BUGTRACKER = "http://debbugs.gnu.org/coreutils"
 LICENSE = "GPLv3+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504\
                     file://src/ls.c;startline=5;endline=16;md5=e1a509558876db58fb6667ba140137ad"
-PR = "r5"
+PR = "r6"
 DEPENDS = "gmp libcap"
 DEPENDS_virtclass-native = ""
 
@@ -36,6 +36,8 @@ base_bindir_progs = "cat chgrp chmod chown cp date dd echo false kill ln ls mkdi
                      mknod mv pwd rm rmdir sleep stty sync touch true uname"
 
 sbindir_progs= "chroot"
+
+acpaths = "-I ./m4"
 
 do_install_append() {
 	for i in df mktemp base64; do mv ${D}${bindir}/$i ${D}${bindir}/$i.${BPN}; done
