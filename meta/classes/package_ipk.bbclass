@@ -1,4 +1,5 @@
 inherit package
+inherit external_package
 
 IMAGE_PKGTYPE ?= "ipk"
 
@@ -6,6 +7,7 @@ IPKGCONF_TARGET = "${WORKDIR}/opkg.conf"
 IPKGCONF_SDK =  "${WORKDIR}/opkg-sdk.conf"
 
 PKGWRITEDIRIPK = "${WORKDIR}/deploy-ipks"
+EXTERNAL_DIR_IPK = "${DEPLOY_DIR_IPK}/external"
 
 # Program to be used to build opkg packages
 OPKGBUILDCMD ??= "opkg-build"
@@ -203,7 +205,7 @@ package_update_index_ipk () {
 		return
 	fi
 
-	packagedirs="${DEPLOY_DIR_IPK}"
+	packagedirs="${DEPLOY_DIR_IPK} ${EXTERNAL_DIR_IPK}"
 	for arch in $ipkgarchs; do
 		packagedirs="$packagedirs ${DEPLOY_DIR_IPK}/$arch"
 	done
@@ -211,6 +213,12 @@ package_update_index_ipk () {
 	multilib_archs="${MULTILIB_ARCHS}"
 	for arch in $multilib_archs; do
 		packagedirs="$packagedirs ${DEPLOY_DIR_IPK}/$arch"
+	done
+
+	all_archs="$ipkgarchs $multilib_archs"
+	add_external_ipk "${EXTERNAL_DIR_IPK}" $all_archs
+	for arch in $all_archs; do
+		packagedirs="$packagedirs ${EXTERNAL_DIR_IPK}/$arch"
 	done
 
 	for pkgdir in $packagedirs; do
@@ -229,18 +237,30 @@ package_update_index_ipk () {
 package_generate_ipkg_conf () {
 	package_generate_archlist
 	echo "src oe file:${DEPLOY_DIR_IPK}" >> ${IPKGCONF_SDK}
+	if [ -e ${EXTERNAL_DIR_IPK} ]; then
+		echo "src external file:${EXTERNAL_DIR_IPK}" >> ${IPKGCONF_SDK}
+	fi
 	ipkgarchs="${SDK_PACKAGE_ARCHS}"
 	for arch in $ipkgarchs; do
 		if [ -e ${DEPLOY_DIR_IPK}/$arch/Packages ] ; then
 		        echo "src oe-$arch file:${DEPLOY_DIR_IPK}/$arch" >> ${IPKGCONF_SDK}
 		fi
+		if [ -e ${EXTERNAL_DIR_IPK}/$arch/Packages ] ; then
+		        echo "src external-$arch file:${EXTERNAL_DIR_IPK}/$arch" >> ${IPKGCONF_SDK}
+		fi
 	done
 
 	echo "src oe file:${DEPLOY_DIR_IPK}" >> ${IPKGCONF_TARGET}
+	if [ -e ${EXTERNAL_DIR_IPK} ]; then
+		echo "src external file:${EXTERNAL_DIR_IPK}" >> ${IPKGCONF_TARGET}
+	fi
 	ipkgarchs="${ALL_MULTILIB_PACKAGE_ARCHS}"
 	for arch in $ipkgarchs; do
 		if [ -e ${DEPLOY_DIR_IPK}/$arch/Packages ] ; then
 		        echo "src oe-$arch file:${DEPLOY_DIR_IPK}/$arch" >> ${IPKGCONF_TARGET}
+		fi
+		if [ -e ${EXTERNAL_DIR_IPK}/$arch/Packages ] ; then
+		        echo "src external-$arch file:${EXTERNAL_DIR_IPK}/$arch" >> ${IPKGCONF_TARGET}
 		fi
 	done
 }
